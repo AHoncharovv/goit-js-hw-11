@@ -1,5 +1,8 @@
 import './sass/main.scss';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
+import SimpleLightbox from "simplelightbox";
+import "simplelightbox/dist/simple-lightbox.min.css";
+
 
 const axios = require('axios');
 
@@ -11,11 +14,8 @@ const loadMoreBtn = document.querySelector('.load-more');
 
 let inputText = '';
 let searchPage = 1;
+let totalImgToSearch = 40;
 
-inputField.style.marginBottom = "25px";
-loadMoreBtn.style.marginTop = "25px";
-loadMoreBtn.style.marginLeft = "250px";
-loadMoreBtn.style.marginBottom = "25px";
 loadMoreBtn.style.opacity = "0";
 
 inputField.addEventListener("submit", handleSubmit);
@@ -24,6 +24,12 @@ function handleSubmit(event) {
   event.preventDefault();
   photoCardField.innerHTML = '';
   inputText = event.currentTarget.elements.searchQuery.value;
+  searchPage = 1;
+  
+  if (inputText.length === 0) {
+    Notify.failure('Please enter text to search.');
+    return;
+  }
  
   getUser().then(response => {
       if (response.data.total === 0) {
@@ -31,15 +37,18 @@ function handleSubmit(event) {
         loadMoreBtn.style.opacity = "0";
         return;
     };
+    Notify.success(`Hooray! We found ${response.data.total} images.`);
+    console.log(response.data.total);
     return response.data.hits;
   }).then(result => {
+    
     const photoListMarkup = result.map(makeCardMarkup).join('');
-      photoCardField.insertAdjacentHTML('beforeend', photoListMarkup);
+    photoCardField.insertAdjacentHTML('beforeend', photoListMarkup);
+    loadMoreBtn.style.opacity = "1";
   });
   
-  searchPage = 1;
   event.target.reset(); 
-  loadMoreBtn.style.opacity = "1";
+  
 }
 
 async function getUser() {
@@ -52,7 +61,7 @@ async function getUser() {
             orientation: 'horizontal',
             safesearch: 'true',
             page: searchPage,
-            per_page: 3,
+            per_page: 20,
 
     }
     });
@@ -64,8 +73,9 @@ async function getUser() {
 };
 
 const makeCardMarkup = (element) => {
-    return      `<div class="photo-card">
-                <img src="${element.webformatURL}" alt="${element.tags}" loading="lazy" />
+  return      `
+                <div class="photo-card">
+                <img style="width: 215px; height: auto;" src="${element.webformatURL}" alt="${element.tags}" loading="lazy" />
                 <div class="info">
                   <p class="info-item">
                     <b>Likes: ${element.likes}</b>
@@ -80,16 +90,28 @@ const makeCardMarkup = (element) => {
                     <b>Downloads: ${element.downloads}</b>
                   </p>
                 </div>
-              </div>`;
+              </div>
+              `;
 };
+// let lightbox = new SimpleLightbox('.photo-card a', {
+//   overlay: true,
+//   overlayOpacity:	0.7,
+//   spinner: true,
+//   nav:	true,
+//   captions: true,
+//   captionsData: 'alt',
+//   captionsDelay: 250,
+
+// });
 
 loadMoreBtn.addEventListener('click', handleLoadMoreClick);
 
-function handleLoadMoreClick(element) {
+function handleLoadMoreClick() {
   searchPage += 1;
 
   getUser().then(response => {
-      if (searchPage > response.data.totalHits) {
+    totalImgToSearch += 40;
+      if (totalImgToSearch > response.data.total) {
         Notify.failure("We're sorry, but you've reached the end of search results.");  
         loadMoreBtn.style.opacity = "0";
         return;
